@@ -19,16 +19,17 @@ st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wid
 st.title("📚 Manga Recommender & Filter App")
 st.markdown("Discover new manga based on your favorites or filter by your specific tastes!")
 
-# 1. Load Data and Cache it so it only runs once!
+# 1. Load Data and Cache it
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
+        # NOTE: If you used the gzip method, change this to "Manga_data.csv.gz"
+        df = pd.read_csv("Manga_data.csv")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
 
-    df['description'] = df['description'].fillna("")
+    df['description'] = df['description'].fillna("No description available.")
     df['rating'] = df['rating'].fillna(0)
     df['year'] = pd.to_numeric(df['year'], errors='coerce').fillna(0)
 
@@ -88,20 +89,24 @@ if not df.empty:
             recs = df.iloc[sim_indices]
 
             st.write(f"### Because you liked **{selected_manga}**:")
-            # Display results in a nice grid
             cols = st.columns(5)
             for i, (_, row) in enumerate(recs.iterrows()):
                 with cols[i % 5]:
-                    html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px;">'
+                    # FIX 1: Image loading fix using HTML and no-referrer
+                    html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">'
                     st.markdown(html_image, unsafe_allow_html=True)
+
                     st.markdown(f"**{row['title']}**")
                     st.caption(f"⭐ {row['rating']} | 📅 {int(row['year']) if row['year'] else 'N/A'}")
+
+                    # FIX 2: Added Description Expander
+                    with st.expander("📖 Synopsis"):
+                        st.write(row['description'])
 
     # TAB 2: FILTERING
     with tab2:
         st.subheader("Filter Manga by Criteria")
 
-        # Move filters to a nice row
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1:
             min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
@@ -129,9 +134,14 @@ if not df.empty:
                 cols = st.columns(5)
                 for i, (_, row) in enumerate(res.iterrows()):
                     with cols[i % 5]:
-                        html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px;">'
+                        # FIX 1: Image loading fix
+                        html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">'
                         st.markdown(html_image, unsafe_allow_html=True)
-                        st.image(row['cover'], use_container_width=True)
+
                         st.markdown(f"**{row['title']}**")
                         st.caption(f"⭐ {row['rating']}")
+
+                        # FIX 2: Added Description Expander
+                        with st.expander("📖 Synopsis"):
+                            st.write(row['description'])
 
