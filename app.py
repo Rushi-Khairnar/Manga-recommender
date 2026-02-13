@@ -24,7 +24,7 @@ st.markdown("Discover new manga based on your favorites or filter by your specif
 def load_data():
     try:
         # NOTE: If you used the gzip method, change this to "Manga_data.csv.gz"
-        df = pd.read_csv("Manga_data.csv")
+        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
