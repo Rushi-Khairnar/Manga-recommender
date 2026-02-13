@@ -12,7 +12,6 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import ast
-import random
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide")
@@ -20,7 +19,22 @@ st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wid
 st.title("📚 Ultimate Manga Recommender")
 st.markdown("Discover new manga, filter by your specific tastes, and build your reading list!")
 
-# --- INITIALIZE SESSION STATE FOR READING LIST & SURPRISE ME ---
+# --- COLOR DICTIONARY FOR TAGS ---
+TAG_COLORS = {
+    'Action': '#FF4B4B', 'Romance': '#FF69B4', 'Horror': '#8B0000',
+    'Sci Fi': '#1E90FF', 'Comedy': '#FFA500', 'Drama': '#9370DB',
+    'Fantasy': '#20B2AA', 'Slice of Life': '#32CD32', 'Mystery': '#483D8B',
+    'Shounen': '#FF8C00', 'Shoujo': '#FF1493', 'Seinen': '#B22222',
+    'Josei': '#BA55D3', 'Adventure': '#2E8B57', 'Supernatural': '#6A5ACD',
+    'Psychological': '#708090', 'Sports': '#FF4500', 'Historical': '#8B4513'
+}
+
+def get_tag_html(tag):
+    # Default to gray if the tag isn't in our special color dictionary
+    color = TAG_COLORS.get(tag, '#808080')
+    return f"<span style='color: {color}; border: 1px solid {color}; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 4px; display: inline-block; margin-bottom: 4px; font-weight: 600;'>{tag}</span>"
+
+# --- INITIALIZE SESSION STATE FOR READING LIST ---
 if 'reading_list' not in st.session_state:
     st.session_state.reading_list = {} # Stores saved manga
 
@@ -48,6 +62,10 @@ def load_data():
     df['description'] = df['description'].fillna("No description available.")
     df['rating'] = df['rating'].fillna(0)
     df['year'] = pd.to_numeric(df['year'], errors='coerce').fillna(0)
+
+    # Fill empty covers with a placeholder string to prevent errors
+    placeholder_img = "https://via.placeholder.com/200x300.png?text=No+Cover"
+    df['cover'] = df['cover'].fillna(placeholder_img)
 
     def get_tag_list(tag_str):
         try:
@@ -95,10 +113,11 @@ if not df.empty:
 
             for col, (_, row) in zip(cols, row_slice.iterrows()):
                 with col:
-                    # Uniform Covers
+                    # FIX: Fallback to placeholder image using 'onerror' if the Anime-Planet URL is broken
                     html_image = f'''
                     <div style="display: flex; justify-content: center; margin-bottom: 10px;">
                         <img src="{row["cover"]}" referrerpolicy="no-referrer"
+                        onerror="this.onerror=null;this.src='https://via.placeholder.com/200x300.png?text=No+Cover';"
                         style="width: 100%; height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
                     </div>
                     '''
@@ -107,10 +126,11 @@ if not df.empty:
                     # Title
                     st.markdown(f"**{row['title']}**")
 
-                    # Genres (Top 3)
+                    # Custom Colored Genres (Top 3)
                     top_tags = row['tag_list'][:3]
-                    tag_str = " • ".join(top_tags) if top_tags else "No tags"
-                    st.markdown(f"<p style='color: gray; font-size: 13px; margin-top: -10px;'>{tag_str}</p>", unsafe_allow_html=True)
+                    if top_tags:
+                        tags_html = "".join([get_tag_html(tag) for tag in top_tags])
+                        st.markdown(tags_html, unsafe_allow_html=True)
 
                     # Rating & Year
                     year_val = int(row['year']) if row['year'] else 'N/A'
@@ -118,7 +138,7 @@ if not df.empty:
 
                     # Add to List Button
                     in_list = row['title'] in st.session_state.reading_list
-                    btn_text = "❌ Remove from List" if in_list else "➕ Add to List"
+                    btn_text = "❌ Remove" if in_list else "➕ Add to List"
                     btn_type = "secondary" if in_list else "primary"
                     st.button(
                         btn_text,
@@ -163,9 +183,12 @@ if not df.empty:
             st.write(f"### Because you liked **{selected_manga}**:")
             display_manga_grid(recs, key_prefix="rec")
 
-    # --- TAB 2: FILTERING ---
+    # --- TAB 2: FILTERING & SEARCH ---
     with tab2:
-        st.subheader("Filter Manga by Criteria")
+        st.subheader("Search & Filter Manga by Criteria")
+
+        # TEXT SEARCH BAR
+        search_query = st.text_input("🔍 Search by Title (e.g., 'Naruto', 'Titan', 'Leveling'):", "")
 
         # Row 1: Includes & Excludes
         f_col1, f_col2 = st.columns(2)
@@ -183,12 +206,16 @@ if not df.empty:
         with f_col5:
             sort_by = st.selectbox("Sort Results By:", ["Highest Rated", "Newest", "Oldest", "A-Z"])
 
-        # Real-time filtering logic
+        # REAL-TIME FILTERING LOGIC
         filtered = df[
             (df['rating'] >= min_rating) &
             (df['year'] >= years[0]) &
             (df['year'] <= years[1])
         ]
+
+        # Apply Text Search
+        if search_query:
+            filtered = filtered[filtered['title'].str.contains(search_query, case=False, na=False)]
 
         if include_tags:
             filtered = filtered[filtered['tag_list'].apply(lambda x: all(t in x for t in include_tags))]
@@ -205,8 +232,15 @@ if not df.empty:
         elif sort_by == "A-Z":
             filtered = filtered.sort_values(by='title', ascending=True)
 
-        st.success(f"Found {len(filtered)} matching manga! Showing top 30:")
-        res = filtered.head(30)
+        # SHOW ALL RESULTS WITH A SAFETY CAP
+        st.success(f"Found {len(filtered)} matching manga!")
+
+        if len(filtered) > 500:
+            st.warning("⚠️ Showing the first 500 results to prevent your browser from freezing. Please narrow down your filters to see more specific results!")
+            res = filtered.head(500)
+        else:
+            res = filtered
+
         display_manga_grid(res, key_prefix="filter")
 
     # --- TAB 3: SURPRISE ME ---
@@ -214,7 +248,6 @@ if not df.empty:
         st.subheader("Don't know what to read? Let us pick for you!")
 
         if st.button("🎲 Roll 10 Random Highly-Rated Manga!", use_container_width=True):
-            # Only picks manga with a rating over 4.0
             st.session_state.random_manga = df[df['rating'] >= 4.0].sample(10)
 
         if not st.session_state.random_manga.empty:
@@ -228,10 +261,25 @@ if not df.empty:
         if not st.session_state.reading_list:
             st.info("Your reading list is empty. Go add some manga from the other tabs!")
         else:
-            if st.button("🗑️ Clear Reading List"):
-                st.session_state.reading_list = {}
-                st.rerun()
-
             list_df = pd.DataFrame(list(st.session_state.reading_list.values()))
+
+            export_df = list_df[['title', 'rating', 'year', 'tags', 'description']].copy()
+            csv_data = export_df.to_csv(index=False).encode('utf-8')
+
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                st.download_button(
+                    label="📥 Download List as CSV",
+                    data=csv_data,
+                    file_name="My_Manga_Reading_List.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with col_b:
+                if st.button("🗑️ Clear Reading List", use_container_width=True):
+                    st.session_state.reading_list = {}
+                    st.rerun()
+
+            st.write("---")
             display_manga_grid(list_df, key_prefix="list")
 
