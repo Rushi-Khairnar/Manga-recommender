@@ -67,6 +67,34 @@ if not df.empty:
         all_tags.update(tags)
     all_tags = sorted(list(all_tags))
 
+    # --- HELPER FUNCTION: BEAUTIFUL ALIGNED GRID ---
+    def display_manga_grid(dataframe):
+        # Break the results into chunks of 5 to create perfect rows
+        for i in range(0, len(dataframe), 5):
+            cols = st.columns(5)
+            row_slice = dataframe.iloc[i:i+5]
+
+            for col, (_, row) in zip(cols, row_slice.iterrows()):
+                with col:
+                    # By forcing height: 300px and object-fit: cover, all images become uniform!
+                    html_image = f'''
+                    <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                        <img src="{row["cover"]}" referrerpolicy="no-referrer"
+                        style="width: 100%; height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    </div>
+                    '''
+                    st.markdown(html_image, unsafe_allow_html=True)
+                    st.markdown(f"**{row['title']}**")
+
+                    year_val = int(row['year']) if row['year'] else 'N/A'
+                    st.caption(f"⭐ {row['rating']} | 📅 {year_val}")
+
+                    with st.expander("📖 Synopsis"):
+                        st.write(row['description'])
+
+            # Add a subtle visual divider between rows
+            st.write("---")
+
     # --- UI LAYOUT ---
     tab1, tab2 = st.tabs(["🎯 Content-Based Recommendations", "🔍 Filter Manga"])
 
@@ -79,7 +107,8 @@ if not df.empty:
             manga_titles = df['title'].dropna().unique().tolist()
             selected_manga = st.selectbox("Select a Manga you like:", [""] + manga_titles)
         with col2:
-            num_recs = st.slider("Number of Recommendations:", 1, 20, 5)
+            # INCREASED TO 30
+            num_recs = st.slider("Number of Recommendations:", 1, 30, 10)
 
         if selected_manga:
             idx = df.index[df['title'] == selected_manga].tolist()[0]
@@ -89,19 +118,7 @@ if not df.empty:
             recs = df.iloc[sim_indices]
 
             st.write(f"### Because you liked **{selected_manga}**:")
-            cols = st.columns(5)
-            for i, (_, row) in enumerate(recs.iterrows()):
-                with cols[i % 5]:
-                    # FIX 1: Image loading fix using HTML and no-referrer
-                    html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">'
-                    st.markdown(html_image, unsafe_allow_html=True)
-
-                    st.markdown(f"**{row['title']}**")
-                    st.caption(f"⭐ {row['rating']} | 📅 {int(row['year']) if row['year'] else 'N/A'}")
-
-                    # FIX 2: Added Description Expander
-                    with st.expander("📖 Synopsis"):
-                        st.write(row['description'])
+            display_manga_grid(recs)
 
     # TAB 2: FILTERING
     with tab2:
@@ -128,20 +145,9 @@ if not df.empty:
             if filtered.empty:
                 st.warning("No manga matched your criteria.")
             else:
-                st.success(f"Found {len(filtered)} matching manga! Showing top 20:")
-                res = filtered.sort_values(by='rating', ascending=False).head(20)
+                st.success(f"Found {len(filtered)} matching manga! Showing top 30:")
+                # INCREASED TO 30
+                res = filtered.sort_values(by='rating', ascending=False).head(30)
 
-                cols = st.columns(5)
-                for i, (_, row) in enumerate(res.iterrows()):
-                    with cols[i % 5]:
-                        # FIX 1: Image loading fix
-                        html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">'
-                        st.markdown(html_image, unsafe_allow_html=True)
-
-                        st.markdown(f"**{row['title']}**")
-                        st.caption(f"⭐ {row['rating']}")
-
-                        # FIX 2: Added Description Expander
-                        with st.expander("📖 Synopsis"):
-                            st.write(row['description'])
+                display_manga_grid(res)
 
