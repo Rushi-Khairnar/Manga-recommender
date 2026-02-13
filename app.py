@@ -92,7 +92,8 @@ if not df.empty:
             cols = st.columns(5)
             for i, (_, row) in enumerate(recs.iterrows()):
                 with cols[i % 5]:
-                    st.image(row['cover'], use_container_width=True)
+                    html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px;">'
+                    st.markdown(html_image, unsafe_allow_html=True)
                     st.markdown(f"**{row['title']}**")
                     st.caption(f"⭐ {row['rating']} | 📅 {int(row['year']) if row['year'] else 'N/A'}")
 
@@ -128,6 +129,8 @@ if not df.empty:
                 cols = st.columns(5)
                 for i, (_, row) in enumerate(res.iterrows()):
                     with cols[i % 5]:
+                        html_image = f'<img src="{row["cover"]}" width="100%" referrerpolicy="no-referrer" style="border-radius: 8px;">'
+                        st.markdown(html_image, unsafe_allow_html=True)
                         st.image(row['cover'], use_container_width=True)
                         st.markdown(f"**{row['title']}**")
                         st.caption(f"⭐ {row['rating']}")
