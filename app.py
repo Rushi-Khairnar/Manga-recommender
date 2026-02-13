@@ -12,18 +12,34 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import ast
+import random
 
-# Page Configuration
+# --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide")
 
-st.title("📚 Manga Recommender & Filter App")
-st.markdown("Discover new manga based on your favorites or filter by your specific tastes!")
+st.title("📚 Ultimate Manga Recommender")
+st.markdown("Discover new manga, filter by your specific tastes, and build your reading list!")
 
-# 1. Load Data and Cache it
+# --- INITIALIZE SESSION STATE FOR READING LIST & SURPRISE ME ---
+if 'reading_list' not in st.session_state:
+    st.session_state.reading_list = {} # Stores saved manga
+
+if 'random_manga' not in st.session_state:
+    st.session_state.random_manga = pd.DataFrame()
+
+# Helper function to add/remove from reading list
+def toggle_list(manga_dict):
+    title = manga_dict['title']
+    if title in st.session_state.reading_list:
+        del st.session_state.reading_list[title]
+    else:
+        st.session_state.reading_list[title] = manga_dict
+
+# --- 1. LOAD DATA ---
 @st.cache_data
 def load_data():
     try:
-        # NOTE: If you used the gzip method, change this to "Manga_data.csv.gz"
+        # NOTE: Change to "Manga_data.csv.gz" if you compressed the file!
         df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
@@ -51,7 +67,7 @@ def load_data():
 
 df = load_data()
 
-# 2. Compute TF-IDF Matrix (Cached for speed)
+# --- 2. COMPUTE TF-IDF MATRIX ---
 @st.cache_resource
 def compute_tfidf(data):
     tfidf = TfidfVectorizer(stop_words='english', max_features=5000)
@@ -61,22 +77,25 @@ def compute_tfidf(data):
 if not df.empty:
     tfidf_matrix = compute_tfidf(df)
 
-    # Extract unique tags for the sidebar
+    # Extract unique tags for the dropdowns
     all_tags = set()
     for tags in df['tag_list']:
         all_tags.update(tags)
     all_tags = sorted(list(all_tags))
 
     # --- HELPER FUNCTION: BEAUTIFUL ALIGNED GRID ---
-    def display_manga_grid(dataframe):
-        # Break the results into chunks of 5 to create perfect rows
+    def display_manga_grid(dataframe, key_prefix):
+        if dataframe.empty:
+            st.warning("No manga found.")
+            return
+
         for i in range(0, len(dataframe), 5):
             cols = st.columns(5)
             row_slice = dataframe.iloc[i:i+5]
 
             for col, (_, row) in zip(cols, row_slice.iterrows()):
                 with col:
-                    # By forcing height: 300px and object-fit: cover, all images become uniform!
+                    # Uniform Covers
                     html_image = f'''
                     <div style="display: flex; justify-content: center; margin-bottom: 10px;">
                         <img src="{row["cover"]}" referrerpolicy="no-referrer"
@@ -84,21 +103,47 @@ if not df.empty:
                     </div>
                     '''
                     st.markdown(html_image, unsafe_allow_html=True)
+
+                    # Title
                     st.markdown(f"**{row['title']}**")
 
+                    # Genres (Top 3)
+                    top_tags = row['tag_list'][:3]
+                    tag_str = " • ".join(top_tags) if top_tags else "No tags"
+                    st.markdown(f"<p style='color: gray; font-size: 13px; margin-top: -10px;'>{tag_str}</p>", unsafe_allow_html=True)
+
+                    # Rating & Year
                     year_val = int(row['year']) if row['year'] else 'N/A'
                     st.caption(f"⭐ {row['rating']} | 📅 {year_val}")
 
+                    # Add to List Button
+                    in_list = row['title'] in st.session_state.reading_list
+                    btn_text = "❌ Remove from List" if in_list else "➕ Add to List"
+                    btn_type = "secondary" if in_list else "primary"
+                    st.button(
+                        btn_text,
+                        key=f"{key_prefix}_{row['title']}",
+                        on_click=toggle_list,
+                        args=(row.to_dict(),),
+                        type=btn_type,
+                        use_container_width=True
+                    )
+
+                    # Synopsis Expander
                     with st.expander("📖 Synopsis"):
                         st.write(row['description'])
 
-            # Add a subtle visual divider between rows
             st.write("---")
 
-    # --- UI LAYOUT ---
-    tab1, tab2 = st.tabs(["🎯 Content-Based Recommendations", "🔍 Filter Manga"])
+    # --- UI LAYOUT TABS ---
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🎯 Recommendations",
+        "🔍 Filter & Search",
+        "🎲 Surprise Me!",
+        f"📚 My Reading List ({len(st.session_state.reading_list)})"
+    ])
 
-    # TAB 1: RECOMMENDATIONS
+    # --- TAB 1: RECOMMENDATIONS ---
     with tab1:
         st.subheader("Find Similar Manga")
         col1, col2 = st.columns([3, 1])
@@ -107,47 +152,86 @@ if not df.empty:
             manga_titles = df['title'].dropna().unique().tolist()
             selected_manga = st.selectbox("Select a Manga you like:", [""] + manga_titles)
         with col2:
-            # INCREASED TO 30
             num_recs = st.slider("Number of Recommendations:", 1, 30, 10)
 
         if selected_manga:
             idx = df.index[df['title'] == selected_manga].tolist()[0]
             cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
             sim_indices = cosine_sim.argsort()[:-num_recs-2:-1][1:]
-
             recs = df.iloc[sim_indices]
 
             st.write(f"### Because you liked **{selected_manga}**:")
-            display_manga_grid(recs)
+            display_manga_grid(recs, key_prefix="rec")
 
-    # TAB 2: FILTERING
+    # --- TAB 2: FILTERING ---
     with tab2:
         st.subheader("Filter Manga by Criteria")
 
-        f_col1, f_col2, f_col3 = st.columns(3)
+        # Row 1: Includes & Excludes
+        f_col1, f_col2 = st.columns(2)
         with f_col1:
-            min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
+            include_tags = st.multiselect("✅ Must INCLUDE genres:", all_tags)
         with f_col2:
-            years = st.slider("Release Year Range", 1950, 2024, (2000, 2024))
+            exclude_tags = st.multiselect("🚫 Must NOT INCLUDE genres:", all_tags)
+
+        # Row 2: Sliders & Sorting
+        f_col3, f_col4, f_col5 = st.columns(3)
         with f_col3:
-            selected_tags = st.multiselect("Must include tags:", all_tags)
+            min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
+        with f_col4:
+            years = st.slider("Release Year Range", 1950, 2024, (2000, 2024))
+        with f_col5:
+            sort_by = st.selectbox("Sort Results By:", ["Highest Rated", "Newest", "Oldest", "A-Z"])
 
-        if st.button("Apply Filters", use_container_width=True):
-            filtered = df[
-                (df['rating'] >= min_rating) &
-                (df['year'] >= years[0]) &
-                (df['year'] <= years[1])
-            ]
+        # Real-time filtering logic
+        filtered = df[
+            (df['rating'] >= min_rating) &
+            (df['year'] >= years[0]) &
+            (df['year'] <= years[1])
+        ]
 
-            if selected_tags:
-                filtered = filtered[filtered['tag_list'].apply(lambda x: all(t in x for t in selected_tags))]
+        if include_tags:
+            filtered = filtered[filtered['tag_list'].apply(lambda x: all(t in x for t in include_tags))]
+        if exclude_tags:
+            filtered = filtered[filtered['tag_list'].apply(lambda x: not any(t in x for t in exclude_tags))]
 
-            if filtered.empty:
-                st.warning("No manga matched your criteria.")
-            else:
-                st.success(f"Found {len(filtered)} matching manga! Showing top 30:")
-                # INCREASED TO 30
-                res = filtered.sort_values(by='rating', ascending=False).head(30)
+        # Sorting logic
+        if sort_by == "Highest Rated":
+            filtered = filtered.sort_values(by='rating', ascending=False)
+        elif sort_by == "Newest":
+            filtered = filtered.sort_values(by='year', ascending=False)
+        elif sort_by == "Oldest":
+            filtered = filtered.sort_values(by='year', ascending=True)
+        elif sort_by == "A-Z":
+            filtered = filtered.sort_values(by='title', ascending=True)
 
-                display_manga_grid(res)
+        st.success(f"Found {len(filtered)} matching manga! Showing top 30:")
+        res = filtered.head(30)
+        display_manga_grid(res, key_prefix="filter")
+
+    # --- TAB 3: SURPRISE ME ---
+    with tab3:
+        st.subheader("Don't know what to read? Let us pick for you!")
+
+        if st.button("🎲 Roll 10 Random Highly-Rated Manga!", use_container_width=True):
+            # Only picks manga with a rating over 4.0
+            st.session_state.random_manga = df[df['rating'] >= 4.0].sample(10)
+
+        if not st.session_state.random_manga.empty:
+            st.write("### Your Random Picks:")
+            display_manga_grid(st.session_state.random_manga, key_prefix="rand")
+
+    # --- TAB 4: READING LIST ---
+    with tab4:
+        st.subheader("Your Saved Manga")
+
+        if not st.session_state.reading_list:
+            st.info("Your reading list is empty. Go add some manga from the other tabs!")
+        else:
+            if st.button("🗑️ Clear Reading List"):
+                st.session_state.reading_list = {}
+                st.rerun()
+
+            list_df = pd.DataFrame(list(st.session_state.reading_list.values()))
+            display_manga_grid(list_df, key_prefix="list")
 
