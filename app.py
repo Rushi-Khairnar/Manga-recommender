@@ -92,7 +92,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv") # Change to "Manga_data.csv.gz" if compressed
+        df = pd.read_csv("Manga_data.csv.gz", compression="gzip") # Change to "Manga_data.csv.gz" if compressed
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it to your repository.")
         return pd.DataFrame()
