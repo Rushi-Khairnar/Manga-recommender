@@ -7,12 +7,17 @@ Original file is located at
     https://colab.research.google.com/drive/1DiQvqxIUq8F747laECxPotEJu7u_wlxA
 """
 
+# Install Streamlit if not already installed
+!pip install streamlit
+
 import streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import ast
 import math
+
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide")
@@ -207,8 +212,7 @@ if not df.empty:
         "🎯 AI Recommendations",
         "🔍 Browse & Search",
         "🎲 Surprise Me!",
-        f"📚 My Reading List ({len(st.session_state.reading_list)})"
-    ])
+        f"📚 My Reading List ({len(st.session_state.reading_list)})"])
 
     # --- TAB 1: RECOMMENDATIONS ---
     with tab1:
