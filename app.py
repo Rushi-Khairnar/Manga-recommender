@@ -14,8 +14,6 @@ from sklearn.metrics.pairwise import linear_kernel
 import ast
 import math
 
-
-
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide")
 
@@ -28,12 +26,14 @@ st.markdown("""
     header {visibility: hidden;}
 
     /* Hover effect for Manga Covers */
-    .manga-card img {
+    .manga-card {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px;
+        overflow: hidden;
     }
-    .manga-card img:hover {
+    .manga-card:hover {
         transform: scale(1.05);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.4) !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.4);
     }
 
     /* Custom Header Design */
@@ -92,8 +92,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        # NOTE: Change to "Manga_data.csv.gz" if you compressed your file!
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
+        df = pd.read_csv("Manga_data.csv") # Change to "Manga_data.csv.gz" if compressed
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it to your repository.")
         return pd.DataFrame()
@@ -152,10 +151,10 @@ if not df.empty:
                 with col:
                     # Hover-effect manga card with fallback image
                     html_image = f'''
-                    <div class="manga-card" style="display: flex; justify-content: center; margin-bottom: 10px;">
-                        <img src="{row["cover"]}" referrerpolicy="no-referrer"
+                    <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                        <img class="manga-card" src="{row["cover"]}" referrerpolicy="no-referrer"
                         onerror="this.onerror=null;this.src='https://via.placeholder.com/200x300.png?text=No+Cover';"
-                        style="width: 100%; height: 300px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                        style="width: 100%; height: 300px; object-fit: cover;">
                     </div>
                     '''
                     st.markdown(html_image, unsafe_allow_html=True)
@@ -209,7 +208,8 @@ if not df.empty:
         "🎯 AI Recommendations",
         "🔍 Browse & Search",
         "🎲 Surprise Me!",
-        f"📚 My Reading List ({len(st.session_state.reading_list)})"])
+        f"📚 My Reading List ({len(st.session_state.reading_list)})"
+    ])
 
     # --- TAB 1: RECOMMENDATIONS ---
     with tab1:
@@ -330,7 +330,6 @@ if not df.empty:
         else:
             list_df = pd.DataFrame(list(st.session_state.reading_list.values()))
 
-            # Export setup for spreadsheet image formulas
             export_df = list_df[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
             export_df['Cover Preview'] = export_df['cover'].apply(lambda x: f'=IMAGE("{x}")')
             export_df = export_df[['title', 'Cover Preview', 'rating', 'year', 'tags', 'description', 'cover']]
