@@ -16,6 +16,7 @@ import math
 import csv
 import os
 from datetime import datetime
+import base64
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
@@ -43,9 +44,9 @@ st.markdown("""
 
     /* Netflix-Style Hero Header with Manga Background */
     .hero-container {
+        position: relative; /* This is required to pin the images inside the banner! */
         padding: 4rem 0 3.5rem 0;
         text-align: center;
-        /* Updated with a reliable image URL that allows third-party loading */
         background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.98)),
                     url('https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=2000&q=80');
         background-size: cover;
@@ -54,6 +55,35 @@ st.markdown("""
         margin-bottom: 2rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         border-bottom: 2px solid #ff4b4b;
+        overflow: hidden; /* Keeps the character images from spilling out the bottom */
+    }
+
+    /* Character Image Styling */
+    .hero-character {
+        position: absolute;
+        bottom: -10px; /* Pins the character right to the bottom floor of the banner */
+        height: 220px; /* Adjust this to make the characters bigger/smaller */
+        width: auto;
+        opacity: 0.95;
+        filter: drop-shadow(0px 0px 15px rgba(255, 75, 75, 0.4)); /* Epic red aura */
+        z-index: 5;
+    }
+
+    /* Pushes left image to the far left and flips it to face inward */
+    .character-left {
+        left: 5%;
+        transform: scaleX(-1);
+    }
+
+    /* Pushes right image to the far right */
+    .character-right {
+        right: 5%;
+    }
+
+    /* Keeps your title floating above everything else */
+    .header-text-box {
+        position: relative;
+        z-index: 10;
     }
 
     .main-header {
@@ -140,10 +170,32 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- HEADER SECTION ---
-st.markdown('''
+# --- HEADER SECTION ---
+
+# 1. Helper function to read your local image
+def get_base64_of_bin_file(bin_file):
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        return "" # Returns empty if the image isn't found so the app doesn't crash
+
+# 2. Convert your local image (CHANGE 'yuji.png' TO YOUR ACTUAL FILE NAME!)
+img_base64 = get_base64_of_bin_file('yuji.png')
+local_image_url = f"data:image/png;base64,{img_base64}" if img_base64 else ""
+
+# 3. Build the Banner
+st.markdown(f'''
     <div class="hero-container">
-        <div class="main-header">WELCOME TO MANGARK</div>
-        <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
+        <img src="{local_image_url}" class="hero-character character-left">
+
+        <div class="header-text-box">
+            <div class="main-header">WELCOME TO MANGARK</div>
+            <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
+        </div>
+
+        <img src="{local_image_url}" class="hero-character character-right">
     </div>
 ''', unsafe_allow_html=True)
 # --- COLOR DICTIONARY FOR TAGS ---
