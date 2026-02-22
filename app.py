@@ -16,7 +16,7 @@ import math
 import csv
 import os
 from datetime import datetime
-import base64
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
@@ -170,12 +170,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- HEADER SECTION ---
-# --- HEADER SECTION ---
 
-# 1. Helper function to read your local image
-# --- HEADER SECTION ---
+import base64
+import os
 
-# 1. Read your local image safely
+# 1. Smart function to read the image and warn us if it fails
 def get_base64(file_path):
     try:
         with open(file_path, "rb") as f:
@@ -184,9 +183,10 @@ def get_base64(file_path):
     except FileNotFoundError:
         return ""
 
+# Try to load the image
 bg_image = get_base64("naruto_bg.jpg")
 
-# 2. Inject the custom background image into the CSS
+# 2. Inject the background OR show a helpful error
 if bg_image:
     st.markdown(f"""
         <style>
@@ -194,10 +194,15 @@ if bg_image:
             background: linear-gradient(rgba(15, 23, 42, 0.70), rgba(15, 23, 42, 0.95)),
                         url('data:image/jpeg;base64,{bg_image}') !important;
             background-size: cover !important;
-            background-position: center 30% !important; /* Adjusts it to show Naruto perfectly */
+            background-position: center 30% !important;
         }}
         </style>
     """, unsafe_allow_html=True)
+else:
+    # THIS IS THE MAGIC TRACKER!
+    current_folder = os.getcwd()
+    st.error(f"🚨 **Image not found!** Python is looking for 'naruto_bg.jpg' exactly inside this folder: `{current_folder}`")
+    st.info("Make sure you drag and drop your image into that exact folder listed above, and make sure it isn't accidentally named 'naruto_bg.jpg.jpg'!")
 
 # 3. Display the Header Text
 st.markdown('''
@@ -206,7 +211,6 @@ st.markdown('''
         <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
     </div>
 ''', unsafe_allow_html=True)
-
 # --- COLOR DICTIONARY FOR TAGS ---
 TAG_COLORS = {
     'Action': '#ef4444', 'Romance': '#ec4899', 'Horror': '#991b1b',
