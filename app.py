@@ -362,7 +362,7 @@ if not df.empty:
                 manga_titles = df['title'].dropna().unique().tolist()
                 selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles, key="ai_select_base")
             with col2:
-                num_recs = st.slider("Results", 1, 30, 10, key="ai_slider_exact")
+                num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_exact")
 
             if selected_manga:
                 idx = df.index[df['title'] == selected_manga].tolist()[0]
@@ -384,7 +384,7 @@ if not df.empty:
             with col1:
                 user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...", key="ai_text_query")
             with col2:
-                num_recs = st.slider("Results", 1, 30, 10, key="ai_slider_custom")
+                num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_custom")
 
             if user_query:
                 # Convert user query to math vector
@@ -420,13 +420,18 @@ if not df.empty:
     # --- TAB 3: SURPRISE ME ---
     with tab3:
         st.markdown("<div style='text-align: center; padding: 2rem;'><h3 style='color: #ff4b4b;'>Let the algorithm decide.</h3></div>", unsafe_allow_html=True)
-        if st.button("🎲 Generate Random Top-Tier Manga", use_container_width=True, key="rand_btn"):
-            st.session_state.random_manga = df[df['rating'] >= 4.2].sample(10)
+
+        # Add a slider so the user can choose how many random manga to roll
+        roll_count = st.slider("How many random manga do you want?", 5, 50, 10, key="rand_slider")
+
+        # Update the button to show the exact number they are about to roll
+        if st.button(f"🎲 Roll {roll_count} Random Top-Tier Manga!", use_container_width=True, key="rand_btn"):
+            # Update the sample() function to use the slider's value
+            st.session_state.random_manga = df[df['rating'] >= 4.2].sample(roll_count)
 
         if not st.session_state.random_manga.empty:
             st.write("<br>", unsafe_allow_html=True)
             display_manga_grid(st.session_state.random_manga, key_prefix="rand")
-
     # --- TAB 4: READING LIST ---
     with tab4:
         if not st.session_state.reading_list:
