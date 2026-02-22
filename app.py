@@ -278,10 +278,10 @@ if not df.empty:
         "✨ AI Recommendations",
         "🎲 Random Roll",
         f"📚 Library ({len(st.session_state.reading_list)})",
-        "📬 Feedback & Requests"
+        "📬 Feedback"
     ])
 
-    # --- TAB 1: BROWSE & SEARCH (FILTERS RESTORED HERE) ---
+    # --- TAB 1: BROWSE & SEARCH ---
     with tab1:
         st.markdown("### 🔍 Search & Filters")
 
@@ -458,4 +458,36 @@ if not df.empty:
                             writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), feedback_type, manga_name, message])
 
                         st.success("🎉 Thank you! Your submission has been received and saved to our database.")
+
+        # --- SECURE ADMIN SECTION ---
+        if os.path.isfile("user_feedback.csv"):
+            st.markdown("---")
+            st.markdown("<h5 style='color: #a0aec0;'>⚙️ Admin Panel (Restricted Access)</h5>", unsafe_allow_html=True)
+
+            # Create a password input box that hides the characters
+            admin_password = st.text_input("Enter Admin Password:", type="password", key="admin_pass")
+
+            # CHANGE "manga_admin_2026" TO WHATEVER YOU WANT YOUR PASSWORD TO BE!
+            if admin_password == "manga_admin_2026":
+                with open("user_feedback.csv", "rb") as f:
+                    admin_csv = f.read()
+
+                col_down, col_del = st.columns([1, 1])
+                with col_down:
+                    st.download_button(
+                        label="📥 Download User Feedback CSV",
+                        data=admin_csv,
+                        file_name="user_feedback.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                with col_del:
+                    # Added a bonus button to let you delete the file after you download it!
+                    if st.button("🗑️ Delete Server File", type="secondary", use_container_width=True):
+                        os.remove("user_feedback.csv")
+                        st.success("File deleted from server!")
+                        st.rerun()
+
+            elif admin_password != "":
+                st.error("❌ Incorrect Password.")
 
