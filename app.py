@@ -15,8 +15,8 @@ import ast
 import math
 import csv
 import os
+import base64
 from datetime import datetime
-
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
@@ -35,55 +35,22 @@ st.markdown("""
         font-family: 'Poppins', sans-serif;
     }
     .block-container {
-        padding-top: 0rem !important; /* Pushed up to fit banner */
+        padding-top: 0rem !important;
         padding-bottom: 0rem !important;
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* Netflix-Style Hero Header with Manga Background */
+    /* Base Hero Header Styling (Background image gets injected dynamically below) */
     .hero-container {
-        position: relative; /* This is required to pin the images inside the banner! */
         padding: 4rem 0 3.5rem 0;
         text-align: center;
-        background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.98)),
-                    url('https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=2000&q=80');
-        background-size: cover;
-        background-position: center;
+        background-color: #1a202c; /* Fallback color */
         border-radius: 0 0 30px 30px;
         margin-bottom: 2rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         border-bottom: 2px solid #ff4b4b;
-        overflow: hidden; /* Keeps the character images from spilling out the bottom */
-    }
-
-    /* Character Image Styling */
-    .hero-character {
-        position: absolute;
-        bottom: -10px; /* Pins the character right to the bottom floor of the banner */
-        height: 220px; /* Adjust this to make the characters bigger/smaller */
-        width: auto;
-        opacity: 0.95;
-        filter: drop-shadow(0px 0px 15px rgba(255, 75, 75, 0.4)); /* Epic red aura */
-        z-index: 5;
-    }
-
-    /* Pushes left image to the far left and flips it to face inward */
-    .character-left {
-        left: 5%;
-        transform: scaleX(-1);
-    }
-
-    /* Pushes right image to the far right */
-    .character-right {
-        right: 5%;
-    }
-
-    /* Keeps your title floating above everything else */
-    .header-text-box {
-        position: relative;
-        z-index: 10;
     }
 
     .main-header {
@@ -169,12 +136,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER SECTION ---
-
-import base64
-import os
-
-# 1. Smart function to read the image and warn us if it fails
+# --- HEADER SECTION WITH DYNAMIC LOCAL IMAGE ---
 def get_base64(file_path):
     try:
         with open(file_path, "rb") as f:
@@ -183,35 +145,32 @@ def get_base64(file_path):
     except FileNotFoundError:
         return ""
 
-# Try to load the image
 bg_image = get_base64("naruto_bg.jpg")
 
-# 2. Inject the background OR show a helpful error
 if bg_image:
     st.markdown(f"""
         <style>
         .hero-container {{
+            padding: 8rem 0 7rem 0 !important; /* Makes the banner much taller */
             background: linear-gradient(rgba(15, 23, 42, 0.70), rgba(15, 23, 42, 0.95)),
                         url('data:image/jpeg;base64,{bg_image}') !important;
-            background-size: contain !important; /* <-- THIS IS THE MAGIC WORD */
-            background-repeat: no-repeat !important; /* Stops the image from duplicating */
-            background-position: center !important;
+            background-size: cover !important;
+            background-position: center 30% !important;
         }}
         </style>
     """, unsafe_allow_html=True)
 else:
-    # THIS IS THE MAGIC TRACKER!
     current_folder = os.getcwd()
     st.error(f"🚨 **Image not found!** Python is looking for 'naruto_bg.jpg' exactly inside this folder: `{current_folder}`")
     st.info("Make sure you drag and drop your image into that exact folder listed above, and make sure it isn't accidentally named 'naruto_bg.jpg.jpg'!")
 
-# 3. Display the Header Text
 st.markdown('''
     <div class="hero-container">
         <div class="main-header">WELCOME TO MANGARK</div>
         <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
     </div>
 ''', unsafe_allow_html=True)
+
 # --- COLOR DICTIONARY FOR TAGS ---
 TAG_COLORS = {
     'Action': '#ef4444', 'Romance': '#ec4899', 'Horror': '#991b1b',
@@ -247,7 +206,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
+        df = pd.read_csv("Manga_data.csv")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
