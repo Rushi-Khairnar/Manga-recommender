@@ -25,22 +25,36 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
+    /* --- NEW BACKGROUND COLOR --- */
+    .stApp {
+        background-color: #0f172a; /* Deep Slate/Navy Blue */
+    }
+
     html, body, [class*="css"] {
         font-family: 'Poppins', sans-serif;
     }
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 0rem !important; /* Pushed up to fit banner */
         padding-bottom: 0rem !important;
     }
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
+    /* Netflix-Style Hero Header with Manga Background */
     .hero-container {
-        padding: 0rem 0 2rem 0;
+        padding: 4rem 0 3.5rem 0;
         text-align: center;
-        background: radial-gradient(circle at center, rgba(255, 75, 75, 0.1) 0%, transparent 70%);
+        background: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)),
+                    url('https://i.pinimg.com/originals/8a/0a/73/8a0a731b7520e5272a2a7cc003ea1327.jpg');
+        background-size: cover;
+        background-position: center 25%;
+        border-radius: 0 0 30px 30px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border-bottom: 2px solid #ff4b4b;
     }
+
     .main-header {
         background: linear-gradient(135deg, #ff4b4b, #ff8c00);
         -webkit-background-clip: text;
@@ -53,7 +67,7 @@ st.markdown("""
         letter-spacing: 2px;
     }
     .sub-header {
-        color: #a0aec0;
+        color: #e2e8f0;
         font-size: 1.2rem;
         font-weight: 300;
         margin-top: 5px;
@@ -167,7 +181,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
+        df = pd.read_csv("Manga_data.csv")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
@@ -370,7 +384,6 @@ if not df.empty:
                 manga_titles = df['title'].dropna().unique().tolist()
                 selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles, key="ai_select_base")
             with col2:
-                # Expanded max slider value to 100
                 num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_exact")
 
             if selected_manga:
@@ -393,7 +406,6 @@ if not df.empty:
             with col1:
                 user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...", key="ai_text_query")
             with col2:
-                # Expanded max slider value to 100
                 num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_custom")
 
             if user_query:
