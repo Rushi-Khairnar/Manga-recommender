@@ -15,7 +15,7 @@ import ast
 import math
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
 
 # --- PREMIUM NEXT-GEN CSS ---
 st.markdown("""
@@ -27,6 +27,12 @@ st.markdown("""
         font-family: 'Poppins', sans-serif;
     }
 
+    /* REMOVE UPPER SPACE (Streamlit Default Padding) */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 0rem !important;
+    }
+
     /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -34,7 +40,7 @@ st.markdown("""
 
     /* Netflix-Style Hero Header */
     .hero-container {
-        padding: 2rem 0 3rem 0;
+        padding: 0rem 0 2rem 0; /* Reduced padding */
         text-align: center;
         background: radial-gradient(circle at center, rgba(255, 75, 75, 0.1) 0%, transparent 70%);
     }
@@ -42,7 +48,7 @@ st.markdown("""
         background: linear-gradient(135deg, #ff4b4b, #ff8c00);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 4rem;
+        font-size: 3.5rem;
         font-weight: 800;
         margin-bottom: 0px;
         padding-bottom: 0px;
@@ -53,7 +59,7 @@ st.markdown("""
         color: #a0aec0;
         font-size: 1.2rem;
         font-weight: 300;
-        margin-top: 10px;
+        margin-top: 5px;
     }
 
     /* Modern Manga Poster Cards */
@@ -65,7 +71,6 @@ st.markdown("""
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         background-color: #1a202c;
         margin-bottom: 15px;
-        cursor: pointer;
     }
     .manga-poster:hover {
         transform: translateY(-8px) scale(1.02);
@@ -128,7 +133,7 @@ st.markdown("""
 # --- HEADER SECTION ---
 st.markdown('''
     <div class="hero-container">
-        <h1 class="main-header">MangaVault</h1>
+        <h1 class="main-header">Welcome To MangaRK</h1>
         <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
     </div>
 ''', unsafe_allow_html=True)
@@ -259,40 +264,44 @@ if not df.empty:
                         use_container_width=True
                     )
 
-                    # Native Streamlit Expander for Synopsis
                     with st.expander("📝 Synopsis"):
                         st.write(row['description'])
 
-            st.write("<br>", unsafe_allow_html=True) # Clean spacing between rows
-
-    # --- SIDEBAR: MODERN CONTROLS ---
-    with st.sidebar:
-        st.markdown("<h2 style='text-align: center; color: #ff4b4b;'>⚡ Filters</h2>", unsafe_allow_html=True)
-        st.markdown("---")
-
-        search_query = st.text_input("🔍 Search Catalog", placeholder="e.g. Solo Leveling")
-
-        st.markdown("### 🏷️ Genres")
-        include_tags = st.multiselect("Must Include", all_tags)
-        exclude_tags = st.multiselect("Must Exclude", all_tags)
-
-        st.markdown("### 📊 Metrics")
-        min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
-        years = st.slider("Release Year", 1950, 2024, (2000, 2024))
-
-        st.markdown("### 🔽 Sort & Order")
-        sort_by = st.selectbox("Sort By", ["Highest Rated", "Newest", "Oldest", "A-Z"])
+            st.write("<br>", unsafe_allow_html=True)
 
     # --- UI LAYOUT TABS ---
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🧭 Browse",
+        "🧭 Browse & Search",
         "✨ AI Recommendations",
         "🎲 Random Roll",
         f"📚 Library ({len(st.session_state.reading_list)})"
     ])
 
-    # --- TAB 1: BROWSE & SEARCH (PAGINATED) ---
+    # --- TAB 1: BROWSE & SEARCH (FILTERS RESTORED HERE) ---
     with tab1:
+        st.markdown("### 🔍 Search & Filters")
+
+        # Text Search
+        search_query = st.text_input("Search Catalog:", placeholder="Type a manga title (e.g., Solo Leveling)...")
+
+        # Tags
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            include_tags = st.multiselect("✅ Must Include Genres:", all_tags)
+        with f_col2:
+            exclude_tags = st.multiselect("🚫 Must NOT Include Genres:", all_tags)
+
+        # Sliders and Sorting
+        f_col3, f_col4, f_col5 = st.columns(3)
+        with f_col3:
+            min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
+        with f_col4:
+            years = st.slider("Release Year Range", 1950, 2024, (2000, 2024))
+        with f_col5:
+            sort_by = st.selectbox("Sort Results By:", ["Highest Rated", "Newest", "Oldest", "A-Z"])
+
+        st.markdown("---")
+
         current_filters = (search_query, tuple(include_tags), tuple(exclude_tags), min_rating, tuple(years), sort_by)
         if st.session_state.last_filters != current_filters:
             st.session_state.current_page = 1
@@ -379,7 +388,7 @@ if not df.empty:
     with tab3:
         st.markdown("<div style='text-align: center; padding: 2rem;'><h3 style='color: #ff4b4b;'>Let the algorithm decide.</h3></div>", unsafe_allow_html=True)
         if st.button("🎲 Generate Random Top-Tier Manga", use_container_width=True):
-            st.session_state.random_manga = df[df['rating'] >= 4.2].sample(10) # Filtered for higher quality randomness
+            st.session_state.random_manga = df[df['rating'] >= 4.2].sample(10)
 
         if not st.session_state.random_manga.empty:
             st.write("<br>", unsafe_allow_html=True)
@@ -398,7 +407,7 @@ if not df.empty:
 
             col_a, col_b, col_c = st.columns([1, 2, 1])
             with col_a:
-                st.download_button("📥 Export Library", data=csv_data, file_name="MangaVault_Library.csv", mime="text/csv", use_container_width=True)
+                st.download_button("📥 Export Library", data=csv_data, file_name="MangaRK_Library.csv", mime="text/csv", use_container_width=True)
             with col_c:
                 if st.button("🗑️ Clear Library", type="secondary", use_container_width=True):
                     st.session_state.reading_list = {}
