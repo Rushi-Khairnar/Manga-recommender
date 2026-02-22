@@ -173,31 +173,40 @@ st.markdown("""
 # --- HEADER SECTION ---
 
 # 1. Helper function to read your local image
-def get_base64_of_bin_file(bin_file):
+# --- HEADER SECTION ---
+
+# 1. Read your local image safely
+def get_base64(file_path):
     try:
-        with open(bin_file, 'rb') as f:
+        with open(file_path, "rb") as f:
             data = f.read()
         return base64.b64encode(data).decode()
     except FileNotFoundError:
-        return "" # Returns empty if the image isn't found so the app doesn't crash
+        return ""
 
-# 2. Convert your local image (CHANGE 'yuji.png' TO YOUR ACTUAL FILE NAME!)
-img_base64 = get_base64_of_bin_file('yuji.png')
-local_image_url = f"data:image/png;base64,{img_base64}" if img_base64 else ""
+bg_image = get_base64("naruto_bg.jpg")
 
-# 3. Build the Banner
-st.markdown(f'''
+# 2. Inject the custom background image into the CSS
+if bg_image:
+    st.markdown(f"""
+        <style>
+        .hero-container {{
+            background: linear-gradient(rgba(15, 23, 42, 0.70), rgba(15, 23, 42, 0.95)),
+                        url('data:image/jpeg;base64,{bg_image}') !important;
+            background-size: cover !important;
+            background-position: center 30% !important; /* Adjusts it to show Naruto perfectly */
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+# 3. Display the Header Text
+st.markdown('''
     <div class="hero-container">
-        <img src="{local_image_url}" class="hero-character character-left">
-
-        <div class="header-text-box">
-            <div class="main-header">WELCOME TO MANGARK</div>
-            <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
-        </div>
-
-        <img src="{local_image_url}" class="hero-character character-right">
+        <div class="main-header">WELCOME TO MANGARK</div>
+        <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
     </div>
 ''', unsafe_allow_html=True)
+
 # --- COLOR DICTIONARY FOR TAGS ---
 TAG_COLORS = {
     'Action': '#ef4444', 'Romance': '#ec4899', 'Horror': '#991b1b',
