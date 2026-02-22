@@ -181,7 +181,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv")
+        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
