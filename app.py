@@ -191,16 +191,18 @@ def load_data():
 
     df['processed_tags'] = df['tags'].apply(process_tags)
     df['tag_list'] = df['tags'].apply(get_tag_list)
-    # Now the AI reads the Title, the Tags, and the Synopsis!
-    df['combined_features'] = df['title'] + " " + df['processed_tags'] + " " + df['description']
+
+    # AI now reads Title + Tags + Description!
+    df['combined_features'] = df['title'].astype(str) + " " + df['processed_tags'] + " " + df['description']
+
     return df
 
 df = load_data()
 
-# --- 2. COMPUTE TF-IDF MATRIX (UPDATED) ---
+# --- 2. COMPUTE TF-IDF MATRIX ---
 @st.cache_resource
 def compute_tfidf(data):
-    # REMOVED max_features=5000 so the AI memorizes EVERY specific name and title!
+    # max_features removed so AI learns every word!
     tfidf = TfidfVectorizer(stop_words='english')
     matrix = tfidf.fit_transform(data['combined_features'])
     return tfidf, matrix
@@ -244,6 +246,7 @@ if not df.empty:
                         tags_html = "".join([get_tag_html(tag) for tag in top_tags])
                         st.markdown(f"<div style='margin-bottom: 5px;'>{tags_html}</div>", unsafe_allow_html=True)
 
+                    # Add to Library Button
                     in_list = row['title'] in st.session_state.reading_list
                     btn_text = "✓ In Library" if in_list else "➕ Add to Library"
                     btn_type = "secondary" if in_list else "primary"
@@ -255,6 +258,11 @@ if not df.empty:
                         type=btn_type,
                         use_container_width=True
                     )
+
+                    # Where to Read Button (Dynamic Google Search)
+                    formatted_title = str(row['title']).replace(' ', '+')
+                    search_url = f"https://www.google.com/search?q=where+to+read+{formatted_title}+manga+official"
+                    st.link_button("🌐 Where to Read", search_url, use_container_width=True)
 
                     with st.expander("📝 Synopsis"):
                         st.write(row['description'])
@@ -349,7 +357,7 @@ if not df.empty:
                     st.session_state.current_page += 1
                     st.rerun()
 
-    # --- TAB 2: RECOMMENDATIONS (DUAL-MODE WITH UNIQUE KEYS) ---
+    # --- TAB 2: RECOMMENDATIONS ---
     with tab2:
         st.markdown("<h4 style='color: #ff4b4b;'>✨ Choose how the AI finds your next read:</h4>", unsafe_allow_html=True)
 
@@ -362,6 +370,7 @@ if not df.empty:
                 manga_titles = df['title'].dropna().unique().tolist()
                 selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles, key="ai_select_base")
             with col2:
+                # Expanded max slider value to 100
                 num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_exact")
 
             if selected_manga:
@@ -384,28 +393,22 @@ if not df.empty:
             with col1:
                 user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...", key="ai_text_query")
             with col2:
+                # Expanded max slider value to 100
                 num_recs = st.slider("Results", 1, 100, 10, key="ai_slider_custom")
 
             if user_query:
-                # Convert user query to math vector
                 query_vec = tfidf_model.transform([user_query])
 
-                # SAFEGUARD 1: Check if the AI recognized ANY of the words
                 if query_vec.nnz == 0:
                     st.warning(f"🤔 The AI doesn't recognize the exact words '{user_query}'. Try describing the plot (e.g., 'ninja', 'vampire romance') or check your spelling!")
                 else:
                     cosine_sim = linear_kernel(query_vec, tfidf_matrix).flatten()
-
-                    # Sort scores from highest to lowest
                     sim_indices = cosine_sim.argsort()[::-1]
-
-                    # SAFEGUARD 2: ONLY keep manga that actually have a score greater than 0
                     valid_indices = [i for i in sim_indices if cosine_sim[i] > 0.0]
 
                     if not valid_indices:
                         st.info("No strong matches found for those specific keywords. Try generalizing your search!")
                     else:
-                        # Only take the top N valid results
                         recs = df.iloc[valid_indices[:num_recs]]
 
                         st.markdown(f"### Best AI matches for: **'{user_query}'**")
@@ -421,17 +424,15 @@ if not df.empty:
     with tab3:
         st.markdown("<div style='text-align: center; padding: 2rem;'><h3 style='color: #ff4b4b;'>Let the algorithm decide.</h3></div>", unsafe_allow_html=True)
 
-        # Add a slider so the user can choose how many random manga to roll
         roll_count = st.slider("How many random manga do you want?", 5, 50, 10, key="rand_slider")
 
-        # Update the button to show the exact number they are about to roll
         if st.button(f"🎲 Roll {roll_count} Random Top-Tier Manga!", use_container_width=True, key="rand_btn"):
-            # Update the sample() function to use the slider's value
             st.session_state.random_manga = df[df['rating'] >= 4.2].sample(roll_count)
 
         if not st.session_state.random_manga.empty:
             st.write("<br>", unsafe_allow_html=True)
             display_manga_grid(st.session_state.random_manga, key_prefix="rand")
+
     # --- TAB 4: READING LIST ---
     with tab4:
         if not st.session_state.reading_list:
@@ -502,7 +503,6 @@ if not df.empty:
 
             admin_password = st.text_input("Enter Admin Password:", type="password", key="admin_pass")
 
-            # Change this to your desired password!
             if admin_password == "manga_admin_2026":
                 with open("user_feedback.csv", "rb") as f:
                     admin_csv = f.read()
