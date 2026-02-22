@@ -193,8 +193,9 @@ if bg_image:
         .hero-container {{
             background: linear-gradient(rgba(15, 23, 42, 0.70), rgba(15, 23, 42, 0.95)),
                         url('data:image/jpeg;base64,{bg_image}') !important;
-            background-size: cover !important;
-            background-position: center 30% !important;
+            background-size: contain !important; /* <-- THIS IS THE MAGIC WORD */
+            background-repeat: no-repeat !important; /* Stops the image from duplicating */
+            background-position: center !important;
         }}
         </style>
     """, unsafe_allow_html=True)
