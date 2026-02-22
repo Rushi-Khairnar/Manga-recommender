@@ -23,25 +23,19 @@ st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
 # --- PREMIUM NEXT-GEN CSS ---
 st.markdown("""
     <style>
-    /* Import Premium Font */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
     html, body, [class*="css"] {
         font-family: 'Poppins', sans-serif;
     }
-
-    /* REMOVE UPPER SPACE (Streamlit Default Padding) */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
     }
-
-    /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* Netflix-Style Hero Header */
     .hero-container {
         padding: 0rem 0 2rem 0;
         text-align: center;
@@ -65,7 +59,6 @@ st.markdown("""
         margin-top: 5px;
     }
 
-    /* Modern Manga Poster Cards */
     .manga-poster {
         position: relative;
         border-radius: 12px;
@@ -86,7 +79,6 @@ st.markdown("""
         display: block;
     }
 
-    /* Dark Gradient Overlay for Text */
     .manga-overlay {
         position: absolute;
         bottom: 0;
@@ -116,7 +108,6 @@ st.markdown("""
         margin-top: 5px;
     }
 
-    /* Customizing Streamlit Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 24px;
         justify-content: center;
@@ -176,7 +167,7 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip") # Change to .csv.gz if compressed
+        df = pd.read_csv("Manga_data.csv.gz", compression="gzip")
     except FileNotFoundError:
         st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
@@ -206,20 +197,21 @@ def load_data():
 
 df = load_data()
 
-# --- 2. COMPUTE TF-IDF MATRIX ---
+# --- 2. COMPUTE TF-IDF MATRIX (UPDATED FOR DUAL-MODE) ---
 @st.cache_resource
 def compute_tfidf(data):
     tfidf = TfidfVectorizer(stop_words='english', max_features=5000)
     matrix = tfidf.fit_transform(data['combined_features'])
-    return tfidf, matrix # <-- Changed this to return both
+    return tfidf, matrix
 
 if not df.empty:
-    tfidf_model, tfidf_matrix = compute_tfidf(df) # <-- Changed this to unpack both
+    tfidf_model, tfidf_matrix = compute_tfidf(df)
 
     all_tags = set()
     for tags in df['tag_list']:
         all_tags.update(tags)
     all_tags = sorted(list(all_tags))
+
     # --- HELPER FUNCTION: CINEMATIC GRID LAYOUT ---
     def display_manga_grid(dataframe, key_prefix):
         if dataframe.empty:
@@ -234,7 +226,6 @@ if not df.empty:
                 with col:
                     year_val = int(row['year']) if row['year'] else 'N/A'
 
-                    # Premium HTML Poster Layout
                     html_poster = f'''
                     <div class="manga-poster">
                         <img class="manga-img" src="{row["cover"]}" referrerpolicy="no-referrer"
@@ -247,13 +238,11 @@ if not df.empty:
                     '''
                     st.markdown(html_poster, unsafe_allow_html=True)
 
-                    # Colored Tag Pills (Top 3)
                     top_tags = row['tag_list'][:3]
                     if top_tags:
                         tags_html = "".join([get_tag_html(tag) for tag in top_tags])
                         st.markdown(f"<div style='margin-bottom: 5px;'>{tags_html}</div>", unsafe_allow_html=True)
 
-                    # Add to List Button
                     in_list = row['title'] in st.session_state.reading_list
                     btn_text = "✓ In Library" if in_list else "➕ Add to Library"
                     btn_type = "secondary" if in_list else "primary"
@@ -284,24 +273,21 @@ if not df.empty:
     with tab1:
         st.markdown("### 🔍 Search & Filters")
 
-        # Text Search
-        search_query = st.text_input("Search Catalog:", placeholder="Type a manga title (e.g., Solo Leveling)...")
+        search_query = st.text_input("Search Catalog:", placeholder="Type a manga title (e.g., Solo Leveling)...", key="browse_search")
 
-        # Tags
         f_col1, f_col2 = st.columns(2)
         with f_col1:
-            include_tags = st.multiselect("✅ Must Include Genres:", all_tags)
+            include_tags = st.multiselect("✅ Must Include Genres:", all_tags, key="browse_inc_tags")
         with f_col2:
-            exclude_tags = st.multiselect("🚫 Must NOT Include Genres:", all_tags)
+            exclude_tags = st.multiselect("🚫 Must NOT Include Genres:", all_tags, key="browse_exc_tags")
 
-        # Sliders and Sorting
         f_col3, f_col4, f_col5 = st.columns(3)
         with f_col3:
-            min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
+            min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1, key="browse_rating")
         with f_col4:
-            years = st.slider("Release Year Range", 1950, 2024, (2000, 2024))
+            years = st.slider("Release Year Range", 1950, 2024, (2000, 2024), key="browse_years")
         with f_col5:
-            sort_by = st.selectbox("Sort Results By:", ["Highest Rated", "Newest", "Oldest", "A-Z"])
+            sort_by = st.selectbox("Sort Results By:", ["Highest Rated", "Newest", "Oldest", "A-Z"], key="browse_sort")
 
         st.markdown("---")
 
@@ -348,58 +334,34 @@ if not df.empty:
 
         display_manga_grid(paginated_res, key_prefix="browse")
 
-        # Premium Pagination Buttons
         if total_pages > 1:
             st.write("---")
             p_col1, p_col2, p_col3 = st.columns([1, 2, 1])
             with p_col1:
-                if st.button("← Previous", disabled=(st.session_state.current_page == 1), use_container_width=True):
+                if st.button("← Previous", disabled=(st.session_state.current_page == 1), use_container_width=True, key="prev_btn"):
                     st.session_state.current_page -= 1
                     st.rerun()
             with p_col2:
                 st.markdown(f"<div style='text-align: center; font-size: 16px; font-weight: bold; color: #ff4b4b; padding-top: 5px;'>Page {st.session_state.current_page}</div>", unsafe_allow_html=True)
             with p_col3:
-                if st.button("Next →", disabled=(st.session_state.current_page == total_pages), use_container_width=True):
+                if st.button("Next →", disabled=(st.session_state.current_page == total_pages), use_container_width=True, key="next_btn"):
                     st.session_state.current_page += 1
                     st.rerun()
 
-    # --- TAB 2: RECOMMENDATIONS ---
-    with tab2:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            manga_titles = df['title'].dropna().unique().tolist()
-            selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles)
-        with col2:
-            num_recs = st.slider("Results", 1, 30, 10)
-
-        if selected_manga:
-            idx = df.index[df['title'] == selected_manga].tolist()[0]
-            cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
-            sim_indices = cosine_sim.argsort()[:-num_recs-2:-1][1:]
-            recs = df.iloc[sim_indices]
-
-            st.markdown(f"### Titles similar to **{selected_manga}**:")
-            display_manga_grid(recs, key_prefix="rec")
-
-            export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
-            export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
-            csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
-
-            st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_{selected_manga}.csv", mime="text/csv")# --- TAB 2: RECOMMENDATIONS ---
+    # --- TAB 2: RECOMMENDATIONS (DUAL-MODE WITH UNIQUE KEYS) ---
     with tab2:
         st.markdown("<h4 style='color: #ff4b4b;'>✨ Choose how the AI finds your next read:</h4>", unsafe_allow_html=True)
 
-        # Give users a choice between Exact Title or Custom Keywords
-        rec_mode = st.radio("Recommendation Mode:", ["Pick an Existing Manga", "Type a Keyword or Plot Idea"], horizontal=True, label_visibility="collapsed")
+        rec_mode = st.radio("Recommendation Mode:", ["Pick an Existing Manga", "Type a Keyword or Plot Idea"], horizontal=True, label_visibility="collapsed", key="ai_mode_radio")
         st.markdown("<br>", unsafe_allow_html=True)
 
         if rec_mode == "Pick an Existing Manga":
             col1, col2 = st.columns([3, 1])
             with col1:
                 manga_titles = df['title'].dropna().unique().tolist()
-                selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles)
+                selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles, key="ai_select_base")
             with col2:
-                num_recs = st.slider("Results", 1, 30, 10)
+                num_recs = st.slider("Results", 1, 30, 10, key="ai_slider_exact")
 
             if selected_manga:
                 idx = df.index[df['title'] == selected_manga].tolist()[0]
@@ -408,17 +370,22 @@ if not df.empty:
                 recs = df.iloc[sim_indices]
 
                 st.markdown(f"### Titles similar to **{selected_manga}**:")
-                display_manga_grid(recs, key_prefix="rec_title")
+                display_manga_grid(recs, key_prefix="rec_exact")
+
+                export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
+                export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
+                csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
+
+                st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_{selected_manga}.csv", mime="text/csv", key="ai_download_exact")
 
         else:
             col1, col2 = st.columns([3, 1])
             with col1:
-                user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...")
+                user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...", key="ai_text_query")
             with col2:
-                num_recs = st.slider("Results", 1, 30, 10, key="slider_custom")
+                num_recs = st.slider("Results", 1, 30, 10, key="ai_slider_custom")
 
             if user_query:
-                # The AI converts the user's typed words into math and searches the dataset!
                 query_vec = tfidf_model.transform([user_query])
                 cosine_sim = linear_kernel(query_vec, tfidf_matrix).flatten()
 
@@ -428,10 +395,16 @@ if not df.empty:
                 st.markdown(f"### Best AI matches for: **'{user_query}'**")
                 display_manga_grid(recs, key_prefix="rec_custom")
 
+                export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
+                export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
+                csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
+
+                st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_Custom_Query.csv", mime="text/csv", key="ai_download_custom")
+
     # --- TAB 3: SURPRISE ME ---
     with tab3:
         st.markdown("<div style='text-align: center; padding: 2rem;'><h3 style='color: #ff4b4b;'>Let the algorithm decide.</h3></div>", unsafe_allow_html=True)
-        if st.button("🎲 Generate Random Top-Tier Manga", use_container_width=True):
+        if st.button("🎲 Generate Random Top-Tier Manga", use_container_width=True, key="rand_btn"):
             st.session_state.random_manga = df[df['rating'] >= 4.2].sample(10)
 
         if not st.session_state.random_manga.empty:
@@ -451,9 +424,9 @@ if not df.empty:
 
             col_a, col_b, col_c = st.columns([1, 2, 1])
             with col_a:
-                st.download_button("📥 Export Library", data=csv_data, file_name="MangaRK_Library.csv", mime="text/csv", use_container_width=True)
+                st.download_button("📥 Export Library", data=csv_data, file_name="MangaRK_Library.csv", mime="text/csv", use_container_width=True, key="lib_download")
             with col_c:
-                if st.button("🗑️ Clear Library", type="secondary", use_container_width=True):
+                if st.button("🗑️ Clear Library", type="secondary", use_container_width=True, key="lib_clear"):
                     st.session_state.reading_list = {}
                     st.rerun()
 
@@ -471,14 +444,16 @@ if not df.empty:
             with st.form("feedback_form"):
                 feedback_type = st.selectbox(
                     "What is this regarding?",
-                    ["Request Missing Manga", "Report Broken Image", "Incorrect Data/Tags", "Feature Suggestion", "Other Bug"]
+                    ["Request Missing Manga", "Report Broken Image", "Incorrect Data/Tags", "Feature Suggestion", "Other Bug"],
+                    key="feed_type"
                 )
 
-                manga_name = st.text_input("Manga Title (if applicable)", placeholder="e.g., Kagurabachi")
+                manga_name = st.text_input("Manga Title (if applicable)", placeholder="e.g., Kagurabachi", key="feed_title")
 
                 message = st.text_area(
                     "Details / Links",
-                    placeholder="Please provide any relevant details, synopsis, or links to the poster image here..."
+                    placeholder="Please provide any relevant details, synopsis, or links to the poster image here...",
+                    key="feed_msg"
                 )
 
                 submitted = st.form_submit_button("📤 Submit to Admin", use_container_width=True)
@@ -504,10 +479,9 @@ if not df.empty:
             st.markdown("---")
             st.markdown("<h5 style='color: #a0aec0;'>⚙️ Admin Panel (Restricted Access)</h5>", unsafe_allow_html=True)
 
-            # Create a password input box that hides the characters
             admin_password = st.text_input("Enter Admin Password:", type="password", key="admin_pass")
 
-            # CHANGE "manga_admin_2026" TO WHATEVER YOU WANT YOUR PASSWORD TO BE!
+            # Change this to your desired password!
             if admin_password == "manga_admin_2026":
                 with open("user_feedback.csv", "rb") as f:
                     admin_csv = f.read()
@@ -519,11 +493,11 @@ if not df.empty:
                         data=admin_csv,
                         file_name="user_feedback.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        use_container_width=True,
+                        key="admin_download"
                     )
                 with col_del:
-                    # Added a bonus button to let you delete the file after you download it!
-                    if st.button("🗑️ Delete Server File", type="secondary", use_container_width=True):
+                    if st.button("🗑️ Delete Server File", type="secondary", use_container_width=True, key="admin_del"):
                         os.remove("user_feedback.csv")
                         st.success("File deleted from server!")
                         st.rerun()
