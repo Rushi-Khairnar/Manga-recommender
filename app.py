@@ -191,8 +191,8 @@ def load_data():
 
     df['processed_tags'] = df['tags'].apply(process_tags)
     df['tag_list'] = df['tags'].apply(get_tag_list)
-    df['combined_features'] = df['processed_tags'] + " " + df['description']
-
+    # Now the AI reads the Title, the Tags, and the Synopsis!
+    df['combined_features'] = df['title'] + " " + df['processed_tags'] + " " + df['description']
     return df
 
 df = load_data()
