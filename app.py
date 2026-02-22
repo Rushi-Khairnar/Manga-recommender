@@ -211,16 +211,15 @@ df = load_data()
 def compute_tfidf(data):
     tfidf = TfidfVectorizer(stop_words='english', max_features=5000)
     matrix = tfidf.fit_transform(data['combined_features'])
-    return matrix
+    return tfidf, matrix # <-- Changed this to return both
 
 if not df.empty:
-    tfidf_matrix = compute_tfidf(df)
+    tfidf_model, tfidf_matrix = compute_tfidf(df) # <-- Changed this to unpack both
 
     all_tags = set()
     for tags in df['tag_list']:
         all_tags.update(tags)
     all_tags = sorted(list(all_tags))
-
     # --- HELPER FUNCTION: CINEMATIC GRID LAYOUT ---
     def display_manga_grid(dataframe, key_prefix):
         if dataframe.empty:
@@ -386,7 +385,48 @@ if not df.empty:
             export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
             csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
 
-            st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_{selected_manga}.csv", mime="text/csv")
+            st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_{selected_manga}.csv", mime="text/csv")# --- TAB 2: RECOMMENDATIONS ---
+    with tab2:
+        st.markdown("<h4 style='color: #ff4b4b;'>✨ Choose how the AI finds your next read:</h4>", unsafe_allow_html=True)
+
+        # Give users a choice between Exact Title or Custom Keywords
+        rec_mode = st.radio("Recommendation Mode:", ["Pick an Existing Manga", "Type a Keyword or Plot Idea"], horizontal=True, label_visibility="collapsed")
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if rec_mode == "Pick an Existing Manga":
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                manga_titles = df['title'].dropna().unique().tolist()
+                selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles)
+            with col2:
+                num_recs = st.slider("Results", 1, 30, 10)
+
+            if selected_manga:
+                idx = df.index[df['title'] == selected_manga].tolist()[0]
+                cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
+                sim_indices = cosine_sim.argsort()[:-num_recs-2:-1][1:]
+                recs = df.iloc[sim_indices]
+
+                st.markdown(f"### Titles similar to **{selected_manga}**:")
+                display_manga_grid(recs, key_prefix="rec_title")
+
+        else:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                user_query = st.text_input("What are you in the mood for?", placeholder="e.g., Pokemon, magic school, cyberpunk ninja...")
+            with col2:
+                num_recs = st.slider("Results", 1, 30, 10, key="slider_custom")
+
+            if user_query:
+                # The AI converts the user's typed words into math and searches the dataset!
+                query_vec = tfidf_model.transform([user_query])
+                cosine_sim = linear_kernel(query_vec, tfidf_matrix).flatten()
+
+                sim_indices = cosine_sim.argsort()[:-num_recs-1:-1]
+                recs = df.iloc[sim_indices]
+
+                st.markdown(f"### Best AI matches for: **'{user_query}'**")
+                display_manga_grid(recs, key_prefix="rec_custom")
 
     # --- TAB 3: SURPRISE ME ---
     with tab3:
