@@ -45,10 +45,11 @@ st.markdown("""
     .hero-container {
         padding: 4rem 0 3.5rem 0;
         text-align: center;
-        background: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.95)),
-                    url('https://i.pinimg.com/originals/8a/0a/73/8a0a731b7520e5272a2a7cc003ea1327.jpg');
+        /* Updated with a reliable image URL that allows third-party loading */
+        background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.98)),
+                    url('https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=2000&q=80');
         background-size: cover;
-        background-position: center 25%;
+        background-position: center;
         border-radius: 0 0 30px 30px;
         margin-bottom: 2rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -141,11 +142,10 @@ st.markdown("""
 # --- HEADER SECTION ---
 st.markdown('''
     <div class="hero-container">
-        <h1 class="main-header">Welcome To MangaRK</h1>
+        <div class="main-header">WELCOME TO MANGARK</div>
         <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
     </div>
 ''', unsafe_allow_html=True)
-
 # --- COLOR DICTIONARY FOR TAGS ---
 TAG_COLORS = {
     'Action': '#ef4444', 'Romance': '#ec4899', 'Horror': '#991b1b',
