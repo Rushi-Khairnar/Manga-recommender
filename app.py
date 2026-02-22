@@ -13,6 +13,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import ast
 import math
+import csv
+import os
+from datetime import datetime
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="MangaRK", page_icon="📚", layout="wide")
@@ -40,7 +43,7 @@ st.markdown("""
 
     /* Netflix-Style Hero Header */
     .hero-container {
-        padding: 0rem 0 2rem 0; /* Reduced padding */
+        padding: 0rem 0 2rem 0;
         text-align: center;
         background: radial-gradient(circle at center, rgba(255, 75, 75, 0.1) 0%, transparent 70%);
     }
@@ -270,11 +273,12 @@ if not df.empty:
             st.write("<br>", unsafe_allow_html=True)
 
     # --- UI LAYOUT TABS ---
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🧭 Browse & Search",
         "✨ AI Recommendations",
         "🎲 Random Roll",
-        f"📚 Library ({len(st.session_state.reading_list)})"
+        f"📚 Library ({len(st.session_state.reading_list)})",
+        "📬 Feedback & Requests"
     ])
 
     # --- TAB 1: BROWSE & SEARCH (FILTERS RESTORED HERE) ---
@@ -415,4 +419,43 @@ if not df.empty:
 
             st.write("<br>", unsafe_allow_html=True)
             display_manga_grid(list_df, key_prefix="list")
+
+    # --- TAB 5: FEEDBACK & REQUESTS ---
+    with tab5:
+        st.markdown("<h3 style='color: #ff4b4b;'>📬 Help us improve MangaRK</h3>", unsafe_allow_html=True)
+        st.markdown("Is your favorite manga missing from our database? Did you spot a broken image or incorrect rating? Let us know!")
+
+        col_form, col_empty = st.columns([2, 1])
+
+        with col_form:
+            with st.form("feedback_form"):
+                feedback_type = st.selectbox(
+                    "What is this regarding?",
+                    ["Request Missing Manga", "Report Broken Image", "Incorrect Data/Tags", "Feature Suggestion", "Other Bug"]
+                )
+
+                manga_name = st.text_input("Manga Title (if applicable)", placeholder="e.g., Kagurabachi")
+
+                message = st.text_area(
+                    "Details / Links",
+                    placeholder="Please provide any relevant details, synopsis, or links to the poster image here..."
+                )
+
+                submitted = st.form_submit_button("📤 Submit to Admin", use_container_width=True)
+
+                if submitted:
+                    if len(message) < 5 and feedback_type != "Request Missing Manga":
+                        st.error("⚠️ Please provide a little more detail in the details box.")
+                    elif not manga_name and feedback_type == "Request Missing Manga":
+                        st.error("⚠️ Please provide the name of the missing manga.")
+                    else:
+                        file_exists = os.path.isfile("user_feedback.csv")
+
+                        with open("user_feedback.csv", "a", newline="", encoding="utf-8") as f:
+                            writer = csv.writer(f)
+                            if not file_exists:
+                                writer.writerow(["Timestamp", "Type", "Manga Title", "Message"])
+                            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), feedback_type, manga_name, message])
+
+                        st.success("🎉 Thank you! Your submission has been received and saved to our database.")
 
