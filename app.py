@@ -15,61 +15,137 @@ import ast
 import math
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide")
+st.set_page_config(page_title="Manga Recommender", page_icon="📚", layout="wide", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS FOR PROFESSIONAL UI/UX ---
+# --- PREMIUM NEXT-GEN CSS ---
 st.markdown("""
     <style>
+    /* Import Premium Font */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Poppins', sans-serif;
+    }
+
     /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* Hover effect for Manga Covers */
-    .manga-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border-radius: 8px;
-        overflow: hidden;
+    /* Netflix-Style Hero Header */
+    .hero-container {
+        padding: 2rem 0 3rem 0;
+        text-align: center;
+        background: radial-gradient(circle at center, rgba(255, 75, 75, 0.1) 0%, transparent 70%);
     }
-    .manga-card:hover {
-        transform: scale(1.05);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-    }
-
-    /* Custom Header Design */
     .main-header {
-        background: linear-gradient(90deg, #ff4b4b, #ff8c00);
+        background: linear-gradient(135deg, #ff4b4b, #ff8c00);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 3.5rem;
-        font-weight: 900;
+        font-size: 4rem;
+        font-weight: 800;
         margin-bottom: 0px;
         padding-bottom: 0px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
     .sub-header {
-        color: #808080;
+        color: #a0aec0;
         font-size: 1.2rem;
-        margin-bottom: 2rem;
+        font-weight: 300;
+        margin-top: 10px;
+    }
+
+    /* Modern Manga Poster Cards */
+    .manga-poster {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background-color: #1a202c;
+        margin-bottom: 15px;
+        cursor: pointer;
+    }
+    .manga-poster:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 15px 30px rgba(255, 75, 75, 0.3);
+    }
+    .manga-img {
+        width: 100%;
+        height: 340px;
+        object-fit: cover;
+        display: block;
+    }
+
+    /* Dark Gradient Overlay for Text */
+    .manga-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.8) 60%, transparent 100%);
+        padding: 20px 12px 10px 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    .manga-title {
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .manga-stats {
+        color: #fbbf24;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 5px;
+    }
+
+    /* Customizing Streamlit Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        justify-content: center;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        border-radius: 8px 8px 0 0;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-size: 16px;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-header">Manga Recommender</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Your intelligent manga discovery platform.</p>', unsafe_allow_html=True)
+# --- HEADER SECTION ---
+st.markdown('''
+    <div class="hero-container">
+        <h1 class="main-header">MangaVault</h1>
+        <p class="sub-header">Discover, track, and curate your ultimate manga collection.</p>
+    </div>
+''', unsafe_allow_html=True)
 
 # --- COLOR DICTIONARY FOR TAGS ---
 TAG_COLORS = {
-    'Action': '#FF4B4B', 'Romance': '#FF69B4', 'Horror': '#8B0000',
-    'Sci Fi': '#1E90FF', 'Comedy': '#FFA500', 'Drama': '#9370DB',
-    'Fantasy': '#20B2AA', 'Slice of Life': '#32CD32', 'Mystery': '#483D8B',
-    'Shounen': '#FF8C00', 'Shoujo': '#FF1493', 'Seinen': '#B22222',
-    'Josei': '#BA55D3', 'Adventure': '#2E8B57', 'Supernatural': '#6A5ACD',
-    'Psychological': '#708090', 'Sports': '#FF4500', 'Historical': '#8B4513'
+    'Action': '#ef4444', 'Romance': '#ec4899', 'Horror': '#991b1b',
+    'Sci Fi': '#3b82f6', 'Comedy': '#f59e0b', 'Drama': '#8b5cf6',
+    'Fantasy': '#10b981', 'Slice of Life': '#84cc16', 'Mystery': '#6366f1',
+    'Shounen': '#f97316', 'Shoujo': '#f43f5e', 'Seinen': '#b91c1c',
+    'Josei': '#d946ef', 'Adventure': '#0ea5e9', 'Supernatural': '#8b5cf6',
+    'Psychological': '#64748b', 'Sports': '#ea580c', 'Historical': '#b45309'
 }
 
 def get_tag_html(tag):
-    color = TAG_COLORS.get(tag, '#808080')
-    return f"<span style='color: {color}; border: 1px solid {color}; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 4px; display: inline-block; margin-bottom: 4px; font-weight: 600;'>{tag}</span>"
+    color = TAG_COLORS.get(tag, '#475569')
+    return f"<span style='background-color: {color}20; color: {color}; border: 1px solid {color}50; padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-right: 4px; display: inline-block; margin-bottom: 4px; font-weight: 600; letter-spacing: 0.5px;'>{tag.upper()}</span>"
 
 # --- INITIALIZE SESSION STATE ---
 if 'reading_list' not in st.session_state:
@@ -92,16 +168,16 @@ def toggle_list(manga_dict):
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("Manga_data.csv.gz", compression="gzip") # Change to "Manga_data.csv.gz" if compressed
+        df = pd.read_csv("Manga_data.csv.gz", compression="gzip") # Change to .csv.gz if compressed
     except FileNotFoundError:
-        st.error("Manga_data.csv not found. Please upload it to your repository.")
+        st.error("Manga_data.csv not found. Please upload it.")
         return pd.DataFrame()
 
-    df['description'] = df['description'].fillna("No description available.")
+    df['description'] = df['description'].fillna("No synopsis available for this title.")
     df['rating'] = df['rating'].fillna(0)
     df['year'] = pd.to_numeric(df['year'], errors='coerce').fillna(0)
 
-    placeholder_img = "https://via.placeholder.com/200x300.png?text=No+Cover"
+    placeholder_img = "https://via.placeholder.com/300x450.png?text=Cover+Not+Found"
     df['cover'] = df['cover'].fillna(placeholder_img)
 
     def get_tag_list(tag_str):
@@ -137,10 +213,10 @@ if not df.empty:
         all_tags.update(tags)
     all_tags = sorted(list(all_tags))
 
-    # --- HELPER FUNCTION: ALIGNED GRID WITH ANIMATIONS ---
+    # --- HELPER FUNCTION: CINEMATIC GRID LAYOUT ---
     def display_manga_grid(dataframe, key_prefix):
         if dataframe.empty:
-            st.warning("No manga found.")
+            st.warning("No manga found matching your criteria.")
             return
 
         for i in range(0, len(dataframe), 5):
@@ -149,29 +225,30 @@ if not df.empty:
 
             for col, (_, row) in zip(cols, row_slice.iterrows()):
                 with col:
-                    # Hover-effect manga card with fallback image
-                    html_image = f'''
-                    <div style="display: flex; justify-content: center; margin-bottom: 10px;">
-                        <img class="manga-card" src="{row["cover"]}" referrerpolicy="no-referrer"
-                        onerror="this.onerror=null;this.src='https://via.placeholder.com/200x300.png?text=No+Cover';"
-                        style="width: 100%; height: 300px; object-fit: cover;">
+                    year_val = int(row['year']) if row['year'] else 'N/A'
+
+                    # Premium HTML Poster Layout
+                    html_poster = f'''
+                    <div class="manga-poster">
+                        <img class="manga-img" src="{row["cover"]}" referrerpolicy="no-referrer"
+                        onerror="this.onerror=null;this.src='https://via.placeholder.com/300x450.png?text=Cover+Not+Found';">
+                        <div class="manga-overlay">
+                            <h4 class="manga-title">{row['title']}</h4>
+                            <div class="manga-stats">⭐ {row['rating']} &nbsp;|&nbsp; 📅 {year_val}</div>
+                        </div>
                     </div>
                     '''
-                    st.markdown(html_image, unsafe_allow_html=True)
-                    st.markdown(f"**{row['title']}**")
+                    st.markdown(html_poster, unsafe_allow_html=True)
 
-                    # Custom Colored Tags
+                    # Colored Tag Pills (Top 3)
                     top_tags = row['tag_list'][:3]
                     if top_tags:
                         tags_html = "".join([get_tag_html(tag) for tag in top_tags])
-                        st.markdown(tags_html, unsafe_allow_html=True)
-
-                    year_val = int(row['year']) if row['year'] else 'N/A'
-                    st.caption(f"⭐ {row['rating']} | 📅 {year_val}")
+                        st.markdown(f"<div style='margin-bottom: 5px;'>{tags_html}</div>", unsafe_allow_html=True)
 
                     # Add to List Button
                     in_list = row['title'] in st.session_state.reading_list
-                    btn_text = "❌ Remove" if in_list else "➕ Add to List"
+                    btn_text = "✓ In Library" if in_list else "➕ Add to Library"
                     btn_type = "secondary" if in_list else "primary"
                     st.button(
                         btn_text,
@@ -182,82 +259,45 @@ if not df.empty:
                         use_container_width=True
                     )
 
-                    with st.expander("📖 Synopsis"):
+                    # Native Streamlit Expander for Synopsis
+                    with st.expander("📝 Synopsis"):
                         st.write(row['description'])
-            st.write("---")
 
-    # --- SIDEBAR: SEARCH & FILTERS ---
+            st.write("<br>", unsafe_allow_html=True) # Clean spacing between rows
+
+    # --- SIDEBAR: MODERN CONTROLS ---
     with st.sidebar:
-        st.header("⚙️ Search & Filters")
-        st.info("These filters control the **Browse & Search** tab.")
+        st.markdown("<h2 style='text-align: center; color: #ff4b4b;'>⚡ Filters</h2>", unsafe_allow_html=True)
+        st.markdown("---")
 
-        search_query = st.text_input("🔍 Search Title:", "")
+        search_query = st.text_input("🔍 Search Catalog", placeholder="e.g. Solo Leveling")
 
-        st.markdown("### Genres")
-        include_tags = st.multiselect("✅ Must Include:", all_tags)
-        exclude_tags = st.multiselect("🚫 Must NOT Include:", all_tags)
+        st.markdown("### 🏷️ Genres")
+        include_tags = st.multiselect("Must Include", all_tags)
+        exclude_tags = st.multiselect("Must Exclude", all_tags)
 
-        st.markdown("### Ratings & Year")
-        min_rating = st.slider("Min Rating", 0.0, 5.0, 4.0, 0.1)
-        years = st.slider("Year Range", 1950, 2024, (2000, 2024))
+        st.markdown("### 📊 Metrics")
+        min_rating = st.slider("Minimum Rating", 0.0, 5.0, 4.0, 0.1)
+        years = st.slider("Release Year", 1950, 2024, (2000, 2024))
 
-        sort_by = st.selectbox("Sort By:", ["Highest Rated", "Newest", "Oldest", "A-Z"])
+        st.markdown("### 🔽 Sort & Order")
+        sort_by = st.selectbox("Sort By", ["Highest Rated", "Newest", "Oldest", "A-Z"])
 
     # --- UI LAYOUT TABS ---
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🎯 AI Recommendations",
-        "🔍 Browse & Search",
-        "🎲 Surprise Me!",
-        f"📚 My Reading List ({len(st.session_state.reading_list)})"
+        "🧭 Browse",
+        "✨ AI Recommendations",
+        "🎲 Random Roll",
+        f"📚 Library ({len(st.session_state.reading_list)})"
     ])
 
-    # --- TAB 1: RECOMMENDATIONS ---
+    # --- TAB 1: BROWSE & SEARCH (PAGINATED) ---
     with tab1:
-        st.subheader("Find Similar Manga using AI Content-Matching")
-        col1, col2 = st.columns([3, 1])
-
-        with col1:
-            manga_titles = df['title'].dropna().unique().tolist()
-            selected_manga = st.selectbox("Select a Manga you like:", [""] + manga_titles)
-        with col2:
-            num_recs = st.slider("Number of Recommendations:", 1, 30, 10)
-
-        if selected_manga:
-            idx = df.index[df['title'] == selected_manga].tolist()[0]
-            cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
-            sim_indices = cosine_sim.argsort()[:-num_recs-2:-1][1:]
-            recs = df.iloc[sim_indices]
-
-            st.write(f"### Because you liked **{selected_manga}**:")
-            display_manga_grid(recs, key_prefix="rec")
-
-            # Export Recommendations to CSV
-            export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
-            export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
-            export_recs = export_recs[['title', 'Cover Preview', 'rating', 'year', 'tags', 'description', 'cover']]
-            csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
-
-            st.download_button(
-                label=f"📥 Download these Recommendations as CSV",
-                data=csv_data_recs,
-                file_name=f"Recommendations_for_{selected_manga.replace(' ', '_')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-
-    # --- TAB 2: BROWSE & SEARCH (PAGINATED) ---
-    with tab2:
-        st.subheader("Explore the Catalog")
-
-        # 1. Capture current filter state from sidebar
         current_filters = (search_query, tuple(include_tags), tuple(exclude_tags), min_rating, tuple(years), sort_by)
-
-        # 2. Reset to Page 1 if filters were changed
         if st.session_state.last_filters != current_filters:
             st.session_state.current_page = 1
             st.session_state.last_filters = current_filters
 
-        # 3. Apply Filters
         filtered = df[
             (df['rating'] >= min_rating) &
             (df['year'] >= years[0]) &
@@ -266,7 +306,6 @@ if not df.empty:
 
         if search_query:
             filtered = filtered[filtered['title'].str.contains(search_query, case=False, na=False)]
-
         if include_tags:
             filtered = filtered[filtered['tag_list'].apply(lambda x: all(t in x for t in include_tags))]
         if exclude_tags:
@@ -281,7 +320,6 @@ if not df.empty:
         elif sort_by == "A-Z":
             filtered = filtered.sort_values(by='title', ascending=True)
 
-        # 4. PAGINATION LOGIC
         ITEMS_PER_PAGE = 30
         total_results = len(filtered)
         total_pages = math.ceil(total_results / ITEMS_PER_PAGE) if total_results > 0 else 1
@@ -293,56 +331,79 @@ if not df.empty:
         end_idx = start_idx + ITEMS_PER_PAGE
         paginated_res = filtered.iloc[start_idx:end_idx]
 
-        st.success(f"Found {total_results} matching manga! Showing page {st.session_state.current_page} of {total_pages}.")
+        if total_results > 0:
+            st.markdown(f"<p style='color: #a0aec0; text-align: right;'>Showing page {st.session_state.current_page} of {total_pages} ({total_results} results)</p>", unsafe_allow_html=True)
 
-        # Display the paginated results
-        display_manga_grid(paginated_res, key_prefix="filter")
+        display_manga_grid(paginated_res, key_prefix="browse")
 
-        # 5. PAGINATION BUTTONS
+        # Premium Pagination Buttons
         if total_pages > 1:
             st.write("---")
             p_col1, p_col2, p_col3 = st.columns([1, 2, 1])
             with p_col1:
-                if st.button("⬅️ Previous Page", disabled=(st.session_state.current_page == 1), use_container_width=True):
+                if st.button("← Previous", disabled=(st.session_state.current_page == 1), use_container_width=True):
                     st.session_state.current_page -= 1
                     st.rerun()
             with p_col2:
-                st.markdown(f"<div style='text-align: center; font-size: 16px; font-weight: bold; padding-top: 5px;'>Page {st.session_state.current_page} of {total_pages}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center; font-size: 16px; font-weight: bold; color: #ff4b4b; padding-top: 5px;'>Page {st.session_state.current_page}</div>", unsafe_allow_html=True)
             with p_col3:
-                if st.button("Next Page ➡️", disabled=(st.session_state.current_page == total_pages), use_container_width=True):
+                if st.button("Next →", disabled=(st.session_state.current_page == total_pages), use_container_width=True):
                     st.session_state.current_page += 1
                     st.rerun()
 
+    # --- TAB 2: RECOMMENDATIONS ---
+    with tab2:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            manga_titles = df['title'].dropna().unique().tolist()
+            selected_manga = st.selectbox("Select a base manga for AI matching:", [""] + manga_titles)
+        with col2:
+            num_recs = st.slider("Results", 1, 30, 10)
+
+        if selected_manga:
+            idx = df.index[df['title'] == selected_manga].tolist()[0]
+            cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
+            sim_indices = cosine_sim.argsort()[:-num_recs-2:-1][1:]
+            recs = df.iloc[sim_indices]
+
+            st.markdown(f"### Titles similar to **{selected_manga}**:")
+            display_manga_grid(recs, key_prefix="rec")
+
+            export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
+            export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
+            csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
+
+            st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_{selected_manga}.csv", mime="text/csv")
+
     # --- TAB 3: SURPRISE ME ---
     with tab3:
-        st.subheader("Don't know what to read? Let us pick for you!")
-        if st.button("🎲 Roll 10 Random Highly-Rated Manga!", use_container_width=True):
-            st.session_state.random_manga = df[df['rating'] >= 4.0].sample(10)
+        st.markdown("<div style='text-align: center; padding: 2rem;'><h3 style='color: #ff4b4b;'>Let the algorithm decide.</h3></div>", unsafe_allow_html=True)
+        if st.button("🎲 Generate Random Top-Tier Manga", use_container_width=True):
+            st.session_state.random_manga = df[df['rating'] >= 4.2].sample(10) # Filtered for higher quality randomness
+
         if not st.session_state.random_manga.empty:
-            st.write("### Your Random Picks:")
+            st.write("<br>", unsafe_allow_html=True)
             display_manga_grid(st.session_state.random_manga, key_prefix="rand")
 
     # --- TAB 4: READING LIST ---
     with tab4:
-        st.subheader("Your Saved Manga")
         if not st.session_state.reading_list:
-            st.info("Your reading list is empty. Browse the catalog or get recommendations to add some!")
+            st.info("Your library is currently empty. Start browsing to add titles!")
         else:
             list_df = pd.DataFrame(list(st.session_state.reading_list.values()))
 
             export_df = list_df[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
             export_df['Cover Preview'] = export_df['cover'].apply(lambda x: f'=IMAGE("{x}")')
-            export_df = export_df[['title', 'Cover Preview', 'rating', 'year', 'tags', 'description', 'cover']]
             csv_data = export_df.to_csv(index=False).encode('utf-8')
 
-            col_a, col_b = st.columns([1, 1])
+            col_a, col_b, col_c = st.columns([1, 2, 1])
             with col_a:
-                st.download_button("📥 Download List as CSV", data=csv_data, file_name="My_Manga_Reading_List.csv", mime="text/csv", use_container_width=True)
-            with col_b:
-                if st.button("🗑️ Clear Reading List", use_container_width=True):
+                st.download_button("📥 Export Library", data=csv_data, file_name="MangaVault_Library.csv", mime="text/csv", use_container_width=True)
+            with col_c:
+                if st.button("🗑️ Clear Library", type="secondary", use_container_width=True):
                     st.session_state.reading_list = {}
                     st.rerun()
 
-            st.write("---")
+            st.write("<br>", unsafe_allow_html=True)
             display_manga_grid(list_df, key_prefix="list")
 
