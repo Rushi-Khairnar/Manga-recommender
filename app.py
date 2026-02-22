@@ -197,10 +197,11 @@ def load_data():
 
 df = load_data()
 
-# --- 2. COMPUTE TF-IDF MATRIX (UPDATED FOR DUAL-MODE) ---
+# --- 2. COMPUTE TF-IDF MATRIX (UPDATED) ---
 @st.cache_resource
 def compute_tfidf(data):
-    tfidf = TfidfVectorizer(stop_words='english', max_features=5000)
+    # REMOVED max_features=5000 so the AI memorizes EVERY specific name and title!
+    tfidf = TfidfVectorizer(stop_words='english')
     matrix = tfidf.fit_transform(data['combined_features'])
     return tfidf, matrix
 
