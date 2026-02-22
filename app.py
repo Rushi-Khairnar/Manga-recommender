@@ -386,20 +386,35 @@ if not df.empty:
                 num_recs = st.slider("Results", 1, 30, 10, key="ai_slider_custom")
 
             if user_query:
+                # Convert user query to math vector
                 query_vec = tfidf_model.transform([user_query])
-                cosine_sim = linear_kernel(query_vec, tfidf_matrix).flatten()
 
-                sim_indices = cosine_sim.argsort()[:-num_recs-1:-1]
-                recs = df.iloc[sim_indices]
+                # SAFEGUARD 1: Check if the AI recognized ANY of the words
+                if query_vec.nnz == 0:
+                    st.warning(f"🤔 The AI doesn't recognize the exact words '{user_query}'. Try describing the plot (e.g., 'ninja', 'vampire romance') or check your spelling!")
+                else:
+                    cosine_sim = linear_kernel(query_vec, tfidf_matrix).flatten()
 
-                st.markdown(f"### Best AI matches for: **'{user_query}'**")
-                display_manga_grid(recs, key_prefix="rec_custom")
+                    # Sort scores from highest to lowest
+                    sim_indices = cosine_sim.argsort()[::-1]
 
-                export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
-                export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
-                csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
+                    # SAFEGUARD 2: ONLY keep manga that actually have a score greater than 0
+                    valid_indices = [i for i in sim_indices if cosine_sim[i] > 0.0]
 
-                st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_Custom_Query.csv", mime="text/csv", key="ai_download_custom")
+                    if not valid_indices:
+                        st.info("No strong matches found for those specific keywords. Try generalizing your search!")
+                    else:
+                        # Only take the top N valid results
+                        recs = df.iloc[valid_indices[:num_recs]]
+
+                        st.markdown(f"### Best AI matches for: **'{user_query}'**")
+                        display_manga_grid(recs, key_prefix="rec_custom")
+
+                        export_recs = recs[['title', 'rating', 'year', 'tags', 'description', 'cover']].copy()
+                        export_recs['Cover Preview'] = export_recs['cover'].apply(lambda x: f'=IMAGE("{x}")')
+                        csv_data_recs = export_recs.to_csv(index=False).encode('utf-8')
+
+                        st.download_button("📥 Export Recommendations to CSV", data=csv_data_recs, file_name=f"Recs_Custom_Query.csv", mime="text/csv", key="ai_download_custom")
 
     # --- TAB 3: SURPRISE ME ---
     with tab3:
